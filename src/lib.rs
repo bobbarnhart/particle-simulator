@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 
 enum Side {
     BLUE,
@@ -17,28 +16,20 @@ struct Particle {
 struct ParticleSimulator {
     step_size: f32,
     time_seconds: f32,
-    particles: HashMap<u32, Particle>,
-    particle_index: u32,
-}
-
-pub fn create_position(x: f32, y: f32, z: f32) -> [f32; 3] {
-    // Create new particle location
-    return [x, y, z];
+    particles: Vec<Particle>,
+    particle_index: usize,
 }
 
 fn add_particle(mut simulator: ParticleSimulator, particle: Particle) -> ParticleSimulator {
     // add a new particle to the simulator
-    simulator.particle_index += 1;
-    simulator
-        .particles
-        .insert(simulator.particle_index, particle);
+    simulator.particles.insert(simulator.particles.len(), particle);
     return simulator;
 }
 
 fn initialize_simulation(step_size: f32) -> ParticleSimulator {
     let time_seconds = 0.0;
-    let index: u32 = 0;
-    let particles: HashMap<u32, Particle> = HashMap::new();
+    let index: usize = 0;
+    let particles: Vec<Particle> = Vec::new();
     let simulator = ParticleSimulator {
         step_size: step_size,
         time_seconds: time_seconds,
@@ -53,7 +44,7 @@ fn advance_simulation(simulator: &ParticleSimulator, steps: u32) -> &ParticleSim
     let mut remaining_steps: u32 = steps;
 
     while remaining_steps > 0 {
-        // update particles here
+        // update particles hereS
         remaining_steps -= 1;
     }
 
@@ -62,21 +53,27 @@ fn advance_simulation(simulator: &ParticleSimulator, steps: u32) -> &ParticleSim
 
 impl ParticleSimulator {
     pub fn add_particle(&mut self, particle: Particle) -> &ParticleSimulator {
-        let new_index: u32 = self.particle_index;
+        let new_index: usize = self.particle_index;
         self.particles.insert(new_index, particle);
         self.particle_index += 1;
         return self;
     }
 
-    pub fn remove_particle(&mut self, id: &u32) -> &ParticleSimulator {
-        self.particles.remove(&id);
+    pub fn remove_particle(&mut self, id: usize) -> &ParticleSimulator {
+        self.particles.remove(id);
         return self;
     }
 
-    pub fn step(&self, steps: u32) -> &ParticleSimulator {
-        advance_simulation(self, steps);
+    pub fn step(&mut self, steps: u32) -> &ParticleSimulator {
+        return advance_simulation(self, steps);
+    }
 
-        return self;
+    pub fn reset(&mut self) -> &ParticleSimulator {
+
+        self.particles.clear();
+        self.particle_index = 0;
+        self.time_seconds = 0.0;
+        return self
     }
 }
 
@@ -119,11 +116,9 @@ mod tests {
 
         sim.add_particle(particle);
 
-        assert!(sim.particles.contains_key(&0));
-
         assert!(sim.particle_index == 1);
 
-        sim.remove_particle(&0);
+        sim.remove_particle(0);
 
         assert!(sim.particles.len() == 0);
     }
