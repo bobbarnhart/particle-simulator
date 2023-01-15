@@ -1,4 +1,4 @@
-
+use pyo3::prelude::*;
 enum Side {
     BLUE,
     RED,
@@ -13,31 +13,34 @@ struct Particle {
     position: [f32; 3],
     velocity: [f32; 3],
 }
+
+#[pyclass]
 struct ParticleSimulator {
     step_size: f32,
     time_seconds: f32,
     particles: Vec<Particle>,
-    particle_index: usize,
-}
-
-fn add_particle(mut simulator: ParticleSimulator, particle: Particle) -> ParticleSimulator {
-    // add a new particle to the simulator
-    simulator.particles.insert(simulator.particles.len(), particle);
-    return simulator;
 }
 
 fn initialize_simulation(step_size: f32) -> ParticleSimulator {
     let time_seconds = 0.0;
-    let index: usize = 0;
     let particles: Vec<Particle> = Vec::new();
     let simulator = ParticleSimulator {
         step_size: step_size,
         time_seconds: time_seconds,
         particles: particles,
-        particle_index: index,
     };
 
     return simulator;
+}
+
+fn get_side_by_string(side: String) -> Result<Side, String> {
+    match side.to_uppercase().as_str() {
+        "BLUE" => Ok(Side::BLUE),
+        "RED" => Ok(Side::RED),
+        "GREEN" => Ok(Side::GREEN),
+        "YELLOW" => Ok(Side::YELLOW),
+        _ => return Err("unrecognized string".to_string())
+    }
 }
 
 fn advance_simulation(simulator: &ParticleSimulator, steps: u32) -> &ParticleSimulator {
@@ -51,31 +54,42 @@ fn advance_simulation(simulator: &ParticleSimulator, steps: u32) -> &ParticleSim
     return simulator;
 }
 
+#[pymethods]
 impl ParticleSimulator {
-    pub fn add_particle(&mut self, particle: Particle) -> &ParticleSimulator {
-        let new_index: usize = self.particle_index;
-        self.particles.insert(new_index, particle);
-        self.particle_index += 1;
-        return self;
+
+    #[new]
+    pub fn new(step_size: f32) -> ParticleSimulator {
+        return initialize_simulation(step_size);
     }
 
-    pub fn remove_particle(&mut self, id: usize) -> &ParticleSimulator {
+    pub fn add_particle(&mut self, name: String, side: String, radius: f32, position: [f32; 3], velocity: [f32; 3]) {
+        let side_enum: Side = get_side_by_string(side).unwrap();
+        let new_particle: Particle = Particle { name: name, side: side_enum, radius: radius, position: position, velocity: velocity };
+        let new_index: usize = self.particles.len();
+        self.particles.insert(new_index, new_particle);
+    }
+
+    pub fn remove_particle(&mut self, id: usize) {
         self.particles.remove(id);
-        return self;
     }
 
-    pub fn step(&mut self, steps: u32) -> &ParticleSimulator {
-        return advance_simulation(self, steps);
+    pub fn step(&mut self, steps: u32) {
+        advance_simulation(self, steps);
     }
 
-    pub fn reset(&mut self) -> &ParticleSimulator {
+    pub fn reset(&mut self) {
 
         self.particles.clear();
-        self.particle_index = 0;
         self.time_seconds = 0.0;
-        return self
     }
 }
+
+#[pymodule]
+fn particle_simulator(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_class::<ParticleSimulator>()?;
+    Ok(())
+}
+
 
 /*
     Unittests
@@ -106,20 +120,8 @@ mod tests {
         let velocity: [f32; 3] = [1.0, 1.0, 0.0];
         let radius: f32 = 1.0;
 
-        let particle = Particle {
-            name: name,
-            side: Side::BLUE,
-            position: position,
-            velocity: velocity,
-            radius: radius,
-        };
-
-        sim.add_particle(particle);
-
-        assert!(sim.particle_index == 1);
-
+        sim.add_particle(name, String::from("blue"), radius, position, velocity);
         sim.remove_particle(0);
-
         assert!(sim.particles.len() == 0);
     }
 }
